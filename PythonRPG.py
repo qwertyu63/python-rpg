@@ -37,14 +37,16 @@ class Player(Actor):
         self.magic = level+1
         self.maxMP = level+1
         self.exp = 0
+        self.gold = 0
         self.spells = [Flare, Stars, Thunder]
+        self.inventory = []
     def __str__(self):
         return """
 %s:
-Lvl: %i    XP: %i
+Lvl: %i    XP: %i    Gold: %i
 HP: %i/%i  MP: %i/%i
 Atk: %i    Def: %i
-""" % (self.name, self.level, self.exp, self.health, self.maxHP, self.magic, self.maxMP, self.attack, self.defence)
+""" % (self.name, self.level, self.exp, self.gold, self.health, self.maxHP, self.magic, self.maxMP, self.attack, self.defence)
 
 class Tile(object):
     def __init__(self, name, look, special=None):
@@ -84,6 +86,29 @@ Flare = Spell("Flare","You launch a blast of fire at",1,2,"")
 Thunder = Spell("Thunder","You launch a lightning bolt at",2,5,"")
 Stars = Spell("Stars","You launch a cone of stars at",2,0,"Split")
 Ice = Spell("Ice","You launch two ice spikes at",3,0,"Double")
+
+class Item(object):
+    def __init__(self, name, HP=5, MP=0, cost=1, special=""):
+        self.name = name
+        self.HP = HP
+        self.MP = MP
+        self.cost = cost
+        self.special = special
+    def __str__(self):
+        return "%s" %(self.name)
+    def used(self,user):
+        user.health+=self.HP
+        if user.health>user.maxHP:
+            user.health=user.maxHP
+        user.magic+=self.MP
+        if user.magic>user.maxMP:
+            user.magic=user.maxMP
+        return self.special
+
+HPotion = Item("Health Potion",5,0,1)
+MPotion = Item("Mana Potion",0,3,1)
+EPotion = Item("Ether Potion",5,3,2)
+LPotion = Item("Life Potion",10,0,2)
 
 from random import randint
 from time import sleep
@@ -195,7 +220,7 @@ def Battle(foe1,foe2=NoMon):
         if type(foe2)!=str:
             if foe2.IsAlive() == True:
                 print(foe2)
-        cmd = input("\n[A]ttack, [M]agic or [F]lee?\n>")
+        cmd = input("\n[A]ttack, [M]agic, [I]tem, or [F]lee?\n>")
         if cmd == "A" or cmd == "a":
             target = BatTarget(foe1,foe2)
             Fight(Player,target)
@@ -204,6 +229,12 @@ def Battle(foe1,foe2=NoMon):
                 break
         elif cmd == "M" or cmd == "m":
             check=CastSpell(foe1,foe2)
+            if check == "FoeTurn":
+                check2 = BatFoeTurn(foe1,foe2)
+                if check2 == False:
+                    break
+        elif cmd == "I" or cmd == "i":
+            check=UseItem()
             if check == "FoeTurn":
                 check2 = BatFoeTurn(foe1,foe2)
                 if check2 == False:
@@ -220,6 +251,9 @@ def Battle(foe1,foe2=NoMon):
     if foe1.IsAlive or foe2.IsAlive == False:
         Player.exp+=foe1.level
         Player.exp+=foe2.level
+        Player.gold+=1
+        if type(foe2)!=Null:
+            Player.gold+=1
         if Player.exp >= Player.level*5:
             LevelUp()
         return "Clear"
@@ -258,15 +292,31 @@ def CastSpell(target1,target2):
         Fight(Player,target,cast.bonus)
         return "FoeTurn"
 
+def UseItem():
+    for potion in Player.inventory:
+        print("[%s]: %s" %(Player.inventory.index(potion)+1,potion))
+    choice=int(input("Which item do you want?\n>"))
+    choice-=1
+    try:
+        drink=Player.inventory[choice]
+        drink.used(Player)
+        del Player.inventory[choice]
+        return "FoeTurn"
+    except IndexError:
+        print("You don't have that many items.")
+        return ""
+
 def Town(townname):
     while 1==1:
         print(Player)
         print("You are in %s.\nWhat do you want to do?"%(townname))
-        cmd = input("[R]est at an inn, leave to [E]xplore or retire and [Q]uit?\n>")
+        cmd = input("[R]est at an inn, [B]uy some supplies, leave to [E]xplore or retire and [Q]uit?\n>")
         if cmd == "R" or cmd == "r":
             Player.health = Player.maxHP
             Player.magic = Player.maxMP
             print("\nA good rest heals the body and mind.")
+        elif cmd == "B" or cmd == "b":
+            Shop()
         elif cmd == "E" or cmd == "e":
             break
         elif cmd == "Q" or cmd == "q":
@@ -275,6 +325,49 @@ def Town(townname):
             break
         else:
             print("Not sure what you want.")
+
+def Shop():
+    while 1==1:
+        print(Player)
+        print("You have ",end="")
+        if len(Player.inventory) == 0:
+            print("no items.\n",end="")
+        else:
+            for potion in Player.inventory[:-1]:
+                print("%s, " %(potion),end="")
+            else:
+                try:
+                   print("%s.\n" %(Player.inventory[-1]))
+                except IndexError:
+                    pass
+        ShopInventory=[HPotion,MPotion,EPotion,LPotion]
+        if len(Player.inventory) >= 10:
+            print("You can't carry any more items.")
+            break
+        for wares in ShopInventory:
+            print("[%s]: %s" %(ShopInventory.index(wares)+1,wares))
+        print("Or [L]eave the shop.")
+        choice=input("What do you want to buy?\n>")
+        if choice == "L" or choice=="l":
+            break
+        choice=int(choice)
+        choice-=1
+        try:
+            buy=ShopInventory[choice]
+        except IndexError:
+            print("That number isn't used.")
+        if buy.cost>Player.gold:
+            print("You don't have enough gold.")
+        else:
+            Player.gold-=buy.cost
+            Player.inventory.append(buy)
+
+def BlockChk(loc,move):
+    if loc.special != "Block":
+        return move
+    else:
+        print("You can't go that way.")
+        return [0,0]
 
 def Explore(Y,X):
     Location = Map[Y][X]
@@ -300,25 +393,13 @@ def Explore(Y,X):
             print("There is a %s here to [A]ttack."%(Location.monster1.name))
         cmd = input("What do you want to do?\n>")
         if cmd == "N" or cmd == "n":
-            if north.special != "Block":
-                return [-1,0]
-            else:
-                print("You can't go that way.")
+            return BlockChk(north,[-1,0])
         elif cmd == "S" or cmd == "s":
-            if south.special != "Block":
-                return [+1,0]
-            else:
-                print("You can't go that way.")
+            return BlockChk(south,[+1,0])
         elif cmd == "E" or cmd == "e":
-            if east.special != "Block":
-                return [0,+1]
-            else:
-                print("You can't go that way.")
+            return BlockChk(east,[0,+1])
         elif cmd == "W" or cmd == "w":
-            if west.special != "Block":
-                return [0,-1]
-            else:
-                print("You can't go that way.")
+            return BlockChk(west,[0,-1])
         elif cmd == "T" or cmd == "t":
             if Location.special == "Town":
                 Town(Location.name)
@@ -347,8 +428,7 @@ def LevelUp():
         Player.spells.append(Ice)
     print("You level up! You are now Level %i!" %Player.level)
 
-#PlayerName = input("What is your name? ")
-PlayerName = "Nick"
+PlayerName = input("What is your name? ")
 Player = Player(PlayerName, 1)
 Goblin = Monster("Goblin",1)
 Wolf = Monster("Wolf",1)
@@ -394,7 +474,8 @@ EncounterMap = [
 CoorX=1
 CoorY=1
 Retire=False
-Battle(Goblin,Wolf)
+#Battle(Goblin,Wolf)
+Player.gold+=20
 while Player.IsAlive()==True:
     Move=[0,0]
     Move=Explore(CoorY,CoorX)
