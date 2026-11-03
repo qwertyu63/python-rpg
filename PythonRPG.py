@@ -111,8 +111,7 @@ EPotion = Item("Ether Potion",5,3,2)
 LPotion = Item("Life Potion",10,0,2)
 
 from random import randint
-from time import sleep
-from threading import Thread
+from time import sleep, monotonic
 import sys
 
 def roll():
@@ -124,33 +123,19 @@ def roll():
 fail = False
 answer = None
 
-def check():
-    global fail
-    global answer
-    answer = None
-    sleep(0.5)
-    if answer != None:
-        fail=False
-        return
-    else:
-        print("X")
-        sys.stdout.flush()
-        fail=True
-        return
-
 def Action():
-    global answer
-    delay=randint(4,12)
-    for i in range(0,delay):
-        print("-",end="")
-        sys.stdout.flush()
+    delay = randint(4, 12)
+    for _ in range(delay):
+        print("-", end=""); sys.stdout.flush()
         sleep(0.5)
-    Thread(target = check).start()
-    answer = input(">")
-    if fail == True:
-        return 0
-    else:
+    print("!")
+    start = monotonic()
+    input(">")
+    elapsed = monotonic() - start
+    if elapsed <= 0.5:
         return 1
+    print("X"); sys.stdout.flush()
+    return 0
 
 def Fight(attacker,target,bonus=0,action=True):
     damage=attacker.attack
