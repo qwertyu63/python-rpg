@@ -19,7 +19,7 @@ Atk: %i    Def: %i
 
 class Null(Actor):
     def __init__(self):
-        self.level = 0
+        Actor.__init__(self, "", 0, 0, 0, 0)
     def IsAlive(self):
         return False
 NoMon = Null()
@@ -233,7 +233,7 @@ def Battle(foe1,foe2=NoMon):
                 break
         else:
             print("Not sure what you want.")
-    if foe1.IsAlive or foe2.IsAlive == False:
+    if foe1.IsAlive() or foe2.IsAlive() == False:
         Player.exp+=foe1.level
         Player.exp+=foe2.level
         Player.gold+=1
@@ -247,9 +247,9 @@ def Battle(foe1,foe2=NoMon):
 def CastSpell(target1,target2):
     for magic in Player.spells:
         print("[%s]: %s" %(Player.spells.index(magic)+1,magic))
-    choice=int(input("Which spell do you want?\n>"))
-    choice-=1
     try:
+        choice=int(input("Which spell do you want?\n>"))
+        choice-=1
         cast=Player.spells[choice]
     except IndexError:
         print("You don't have that many spells.")
@@ -283,9 +283,9 @@ def CastSpell(target1,target2):
 def UseItem():
     for potion in Player.inventory:
         print("[%s]: %s" %(Player.inventory.index(potion)+1,potion))
-    choice=int(input("Which item do you want?\n>"))
-    choice-=1
     try:
+        choice=int(input("Which item do you want?\n>"))
+        choice-=1
         drink=Player.inventory[choice]
         drink.used(Player)
         del Player.inventory[choice]
@@ -331,8 +331,6 @@ def Shop():
                    print("%s.\n" %(Player.inventory[-1]))
                 except IndexError:
                     pass
-                except ValueError:
-                    pass
         ShopInventory=[HPotion,MPotion,EPotion,LPotion]
         if len(Player.inventory) >= 10:
             print("You can't carry any more items.")
@@ -343,15 +341,15 @@ def Shop():
         choice=input("What do you want to buy?\n>")
         if choice == "L" or choice=="l":
             break
-        choice=int(choice)
+        try:
+            choice=int(choice)
+        except ValueError:
+                    choice=9999
         choice-=1
         try:
             buy=ShopInventory[choice]
         except IndexError:
             print("That number isn't used.")
-        except ValueError:
-            print("That's just nonsense.")
-            return ""
         if buy.cost>Player.gold:
             print("You don't have enough gold.")
         else:
