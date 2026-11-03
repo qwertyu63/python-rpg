@@ -11,8 +11,8 @@ class Actor(object):
 Lvl: %i    HP: %i
 Atk: %i    Def: %i
 """ % (self.name, self.level, self.health, self.attack, self.defence)
-    def IsAlive(char):
-        if char.health > 0:
+    def IsAlive(self):
+        if self.health > 0:
             return True
         else:
             return False
@@ -269,6 +269,9 @@ def CastSpell(target1,target2):
     except IndexError:
         print("You don't have that many spells.")
         return ""
+    except ValueError:
+        print("That's just nonsense.")
+        return ""
     if cast.cost>Player.magic:
         print("You don't have enough MP.")
         return ""
@@ -305,6 +308,9 @@ def UseItem():
     except IndexError:
         print("You don't have that many items.")
         return ""
+    except ValueError:
+        print("That's just nonsense.")
+        return ""
 
 def Town(townname):
     while 1==1:
@@ -340,6 +346,8 @@ def Shop():
                    print("%s.\n" %(Player.inventory[-1]))
                 except IndexError:
                     pass
+                except ValueError:
+                    pass
         ShopInventory=[HPotion,MPotion,EPotion,LPotion]
         if len(Player.inventory) >= 10:
             print("You can't carry any more items.")
@@ -356,6 +364,9 @@ def Shop():
             buy=ShopInventory[choice]
         except IndexError:
             print("That number isn't used.")
+        except ValueError:
+            print("That's just nonsense.")
+            return ""
         if buy.cost>Player.gold:
             print("You don't have enough gold.")
         else:
